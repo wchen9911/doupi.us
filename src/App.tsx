@@ -43,7 +43,7 @@ const TRANSLATIONS = {
       "将三鲜馅料下锅煸炒，加入调料焖煮。",
       "在大平底锅中摊开浆水，抹上蛋液，摊成金黄脆皮。",
       "翻面铺上糯米和馅料，折叠整齐。",
-      "煎至底部焦脆，切成小方块，撒上葱花即可。"
+      "煎至底部焦脆，切成小方块，撒上葱花即可。",
     ],
     video_caption: "武汉街头美食的魅力在于现场感。看师傅们如何有节奏地翻动巨大的炒锅。",
     footer: "为 doupi.us 制作 - 传播武汉街头美食文化"
@@ -51,14 +51,14 @@ const TRANSLATIONS = {
 };
 
 const VIDEOS = [
-  { id: 'WThFj5JtkJ8', title: 'Authentic Wuhan Doupi Tutorial', zhTitle: '正宗武汉三鲜豆皮做法详解 (Rocky\'s Chinese Food)' },
-  { id: 'vX9F0_lT43E', title: 'The Art of the Massive Pan Flip', zhTitle: '震撼！看武汉师傅单手翻动巨型豆皮锅' },
-  { id: 'GZ0qXeyq_0s', title: 'Food Ranger: God Level Street Food', zhTitle: '美食大王：武汉街头三鲜豆皮盛况 (Food Ranger)' },
-  { id: 'Yh2HQk-yFJA', title: 'Goldthread: Carbs on Carbs', zhTitle: '武汉三鲜豆皮：碳水快乐之源 (Goldthread)' },
-  { id: '_yKzbvpl8rd4', title: 'Historic Market Tour 2026', zhTitle: '2026武汉集市巡礼：地道三鲜豆皮' },
-  { id: 'DqYSuVp8_mj', title: 'Wuhan Street Scene 2026 (4K)', zhTitle: '2026武汉街头美食实拍 (4K高清)' },
-  { id: 'QZlgOty_Sq1', title: 'A Satisfying Market Tour', zhTitle: '治愈系：武汉晨光中的豆皮摊位' },
-  { id: 'KDikFL5khew', title: 'Wuhan Travel Guide: Hubu Alley', zhTitle: '武汉旅游指南：户部巷寻味豆皮' }
+  { id: 'WThFj5JtkJ8', title: 'Magic Ingredients: Best Homemade Doupi', zhTitle: '小高姐：家庭版武汉三鲜豆皮 (Top Rated)' },
+  { id: 'jFVJbvsetcU', title: 'Food Ranger: God Level Street Food Tour', zhTitle: '美食大王：武汉街头美食巡礼 (The Food Ranger)' },
+  { id: 'Yh2HQk-yFJA', title: 'Goldthread: The Art of Doupi', zhTitle: 'Goldthread：走进武汉豆皮的艺术' },
+  { id: 'vX9F0_lT43E', title: 'Iconic: The Massive Pan Flip Skill', zhTitle: '震撼视觉：武汉师傅单手翻动巨型锅' },
+  { id: '_yKzbvpl8rd4', title: 'Fujiade Old Chef: Professional Ratio', zhTitle: '付家德老厨：正宗三鲜豆皮配比与技巧' },
+  { id: 'QZlgOty_Sq1', title: 'Wuhan Morning Market Culture', zhTitle: '治愈系：武汉清晨集市中的豆皮香' },
+  { id: 'KDikFL5khew', title: 'Travel Guide: Must-Eat Spot Hubu Alley', zhTitle: '旅游指南：户部巷寻味最正宗豆皮' },
+  { id: 'vX9F0_lT43E', title: 'Viral Street Food Master', zhTitle: '街头绝技：这就是武汉豆皮的魅力' }
 ];
 
 export default function App() {
@@ -169,8 +169,8 @@ export default function App() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {VIDEOS.map((vid) => (
-              <div key={vid.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-orange-100">
+            {VIDEOS.map((vid, idx) => (
+              <div key={`${vid.id}-${idx}`} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-orange-100">
                 <div className="aspect-video relative">
                   <iframe
                     className="w-full h-full"
