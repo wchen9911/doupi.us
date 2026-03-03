@@ -69,7 +69,7 @@ const VIDEOS = [
 ];
 
 export default function App() {
-  const [lang, setLang] = useState<'en' | 'zh'>('en');
+  const [lang, setLang] = useState<'en' | 'zh'>('zh');
   const t = TRANSLATIONS[lang];
 
   return (
