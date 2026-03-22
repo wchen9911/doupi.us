@@ -176,9 +176,10 @@ interface BattleUIProps {
   isGameOver: boolean;
   onExit: () => void;
   onAnswer: (option: string) => void;
+  totalTimeLimit?: number;
 }
 
-function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 20, timeLeft, isGameOver, onExit, onAnswer }: BattleUIProps) {
+function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 20, timeLeft, isGameOver, onExit, onAnswer, totalTimeLimit = TIME_LIMIT }: BattleUIProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md battle-overlay">
       <div className="w-full max-w-lg bg-white border-8 border-gray-900 rounded-[3rem] p-8 shadow-[20px_20px_0px_0px_rgba(0,0,0,0.3)] relative overflow-hidden">
@@ -209,7 +210,7 @@ function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 
             className={`h-full transition-all duration-1000 ease-linear ${
               timeLeft > 10 ? 'bg-green-400' : timeLeft > 5 ? 'bg-yellow-400' : 'bg-red-500'
             }`}
-            style={{ width: `${(timeLeft / TIME_LIMIT) * 100}%` }}
+            style={{ width: `${(timeLeft / totalTimeLimit) * 100}%` }}
           ></div>
           <div className="absolute inset-0 flex items-center justify-center">
              <span className="text-[10px] font-black uppercase italic">Time Left: {timeLeft}s</span>
@@ -280,6 +281,7 @@ function GameCard({ game, onSelect, isLocked }: { game: GameInfo; onSelect: (id:
 
 function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
   const gameId = 'Multiplication';
+  const [difficulty, setDifficulty] = useState<number | null>(null);
   const [questions, setQuestions] = useState<MathQuestion[]>(() => {
     const saved = localStorage.getItem(MULTIPLICATION_STATE_KEY);
     if (saved) {
@@ -310,23 +312,28 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
     return { ...q, options: generateOptions(q.answer, 'Multiplication') };
   }, []);
 
-  // Initial question setup
+  // Initial progress setup
   useEffect(() => {
+    setProgress(questions.filter(isQuestionSatisfied).length);
+  }, []);
+
+  const startBattle = (seconds: number) => {
+    setDifficulty(seconds);
+    setTimeLeft(seconds);
     const next = pickNextQuestion(questions);
     if (next) {
       setCurrentQuestion(next);
-      setProgress(questions.filter(isQuestionSatisfied).length);
     } else {
       setIsGameOver(true);
       onComplete();
     }
-  }, []);
+  };
 
   const moveToNext = (updatedQs: MathQuestion[]) => {
     const next = pickNextQuestion(updatedQs);
     if (next) {
       setCurrentQuestion(next);
-      setTimeLeft(TIME_LIMIT);
+      setTimeLeft(difficulty || 20);
       setFeedback('idle');
     } else {
       setIsGameOver(true);
@@ -344,10 +351,10 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
       setTimeout(() => moveToNext(updated), 800);
       return updated;
     });
-  }, [currentQuestion, pickNextQuestion, onComplete]);
+  }, [currentQuestion, pickNextQuestion, onComplete, difficulty]);
 
   useEffect(() => {
-    if (!isGameOver && feedback === 'idle' && currentQuestion) {
+    if (!isGameOver && feedback === 'idle' && currentQuestion && difficulty !== null) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -359,7 +366,7 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
       }, 1000);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isGameOver, feedback, handleTimeOut, currentQuestion]);
+  }, [isGameOver, feedback, handleTimeOut, currentQuestion, difficulty]);
 
   const handleAnswer = (selectedOption: string) => {
     if (feedback !== 'idle' || isGameOver || !currentQuestion) return;
@@ -387,6 +394,39 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
     });
   };
 
+  if (difficulty === null) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+        <div className="w-full max-w-md bg-white border-8 border-gray-900 rounded-[3rem] p-10 shadow-[20px_20px_0px_0px_rgba(0,0,0,0.3)] text-center">
+          <h2 className="text-4xl font-black text-gray-900 mb-2 uppercase italic tracking-tighter">Choose Difficulty</h2>
+          <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-8">How much time do you need per battle?</p>
+          <div className="grid grid-cols-1 gap-4">
+            {[
+              { label: 'EASY (15s)', time: 15, color: 'bg-green-400' },
+              { label: 'NORMAL (10s)', time: 10, color: 'bg-yellow-400' },
+              { label: 'HARD (5s)', time: 5, color: 'bg-orange-500' },
+              { label: 'TRAINER (3s)', time: 3, color: 'bg-red-600' }
+            ].map((mode) => (
+              <button
+                key={mode.time}
+                onClick={() => startBattle(mode.time)}
+                className={`${mode.color} text-gray-900 font-black text-xl py-4 rounded-2xl border-4 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all uppercase italic`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={onExit}
+            className="mt-8 text-gray-500 font-black uppercase tracking-widest text-xs hover:text-gray-900 transition-colors"
+          >
+            Cancel Battle
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentQuestion && !isGameOver) return null;
 
   return (
@@ -401,6 +441,7 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
       isGameOver={isGameOver} 
       onExit={onExit} 
       onAnswer={handleAnswer} 
+      totalTimeLimit={difficulty}
     />
   );
 }
