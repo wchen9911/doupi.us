@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Shield, Swords, Star, Zap, Brain, Trophy, RotateCcw, ChevronRight, Lock, Coins, Timer, Heart } from 'lucide-react';
+import { Shield, Star, Zap, Brain, RotateCcw, Lock, Coins, Heart } from 'lucide-react';
 import './App.css';
 
 // --- Types ---
 type GradeRange = string;
-type GameType = 'Multiplication' | 'Fraction' | 'Decimal' | 'PEMDAS' | 'Algebra';
+type GameType = 'FactFluency' | 'ContextClues' | 'ScienceLab' | 'DailyQuest' | 'LexiaLink';
 
 interface GameInfo {
   id: GameType;
@@ -12,6 +12,7 @@ interface GameInfo {
   grades: GradeRange;
   icon: any;
   color: string;
+  reportContext: string;
 }
 
 interface MathQuestion {
@@ -24,17 +25,53 @@ interface MathQuestion {
 }
 
 const GAMES: GameInfo[] = [
-  { id: 'Multiplication', title: 'Mul & Div', grades: 'Grades 2-4', icon: Zap, color: 'bg-yellow-400' },
-  { id: 'Fraction', title: 'Fraction Quest', grades: 'Grades 4-6', icon: Star, color: 'bg-blue-400' },
-  { id: 'Decimal', title: 'Decimal Dash', grades: 'Grades 4-6', icon: Brain, color: 'bg-green-400' },
-  { id: 'PEMDAS', title: 'PEMDAS Puzzle', grades: 'Grades 5-6', icon: Swords, color: 'bg-red-500' },
-  { id: 'Algebra', title: 'Algebra Arena', grades: 'Grades 6+', icon: Shield, color: 'bg-purple-500' },
+  { 
+    id: 'FactFluency', 
+    title: 'Fluency Fortress', 
+    grades: 'Math Fact 2 -> 3', 
+    icon: Zap, 
+    color: 'bg-yellow-400',
+    reportContext: "Teacher says: 'Play games to practice fact fluency!'"
+  },
+  { 
+    id: 'ContextClues', 
+    title: 'Context Cave', 
+    grades: 'Reading 2 -> 3', 
+    icon: Brain, 
+    color: 'bg-green-400',
+    reportContext: "Master the meaning of words using clues."
+  },
+  { 
+    id: 'ScienceLab', 
+    title: 'Science Sage', 
+    grades: 'Proficient (4)', 
+    icon: Star, 
+    color: 'bg-blue-400',
+    reportContext: "You excel at arguing organism survival!"
+  },
+  { 
+    id: 'DailyQuest', 
+    title: 'Daily Quest', 
+    grades: 'Self-Advocacy', 
+    icon: Shield, 
+    color: 'bg-red-500',
+    reportContext: "Glasses? Desk move? You have a standing invitation!"
+  },
+  { 
+    id: 'LexiaLink', 
+    title: 'Lexia Power', 
+    grades: '15-20 Mins', 
+    icon: Zap, 
+    color: 'bg-purple-500',
+    reportContext: "Daily practice for reading & phonics."
+  },
 ];
 
 const STORAGE_KEY = 'owen_math_unlock_level';
 const MULTIPLICATION_STATE_KEY = 'owen_math_multiplication_state_v2';
-const VERSION = "v2.0.0";
-const TIME_LIMIT = 10;
+const QUEST_LOG_KEY = 'owen_daily_quest_v1';
+const VERSION = "v3.0.0";
+const DEFAULT_TIME_LIMIT = 10;
 
 // --- Math Utilities ---
 const getRandomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -66,56 +103,37 @@ const generateAllMultiplicationQuestions = (): MathQuestion[] => {
 
 const isQuestionSatisfied = (q: MathQuestion) => q.correctCount >= q.incorrectCount + 1;
 
-const gcd = (a: number, b: number): number => {
-  return b === 0 ? a : gcd(b, a % b);
-};
-
-const simplifyFraction = (n: number, d: number): [number, number] => {
-  const common = Math.abs(gcd(n, d));
-  return [n / common, d / common];
-};
-
 const generateProblem = (type: GameType) => {
   let prob: any;
   switch (type) {
-    case 'Multiplication': return null;
-    case 'Fraction': {
-      const den = getRandomInt(2, 8);
-      let n1 = getRandomInt(1, den);
-      let n2 = getRandomInt(1, den);
-      const op = Math.random() > 0.5 ? '+' : '-';
-      if (op === '-' && n1 < n2) [n1, n2] = [n2, n1];
-      const resN = op === '+' ? n1 + n2 : n1 - n2;
-      const [sn, sd] = simplifyFraction(resN, den);
-      prob = { question: `${n1}/${den} ${op} ${n2}/${den}`, answer: `${sn}/${sd}`, rawAnswer: `${resN}/${den}` };
+    case 'FactFluency': return null;
+    case 'ContextClues': {
+      const clues = [
+        { q: "The sun was so [blank] I had to wear glasses.", a: "bright" },
+        { q: "Owen is very [blank] and tells great jokes.", a: "witty" },
+        { q: "I used a [blank] to see the tiny bacteria.", a: "microscope" },
+        { q: "The [blank] of the mountain was covered in snow.", a: "peak" },
+        { q: "He felt [blank] after getting a 4 on his test.", a: "proud" },
+        { q: "The [blank] old man gave us some candy.", a: "kind" },
+        { q: "The cat was very [blank] and hid under the bed.", a: "shy" },
+        { q: "I was [blank] because I didn't get enough sleep.", a: "tired" }
+      ];
+      const selected = clues[getRandomInt(0, clues.length - 1)];
+      prob = { question: selected.q, answer: selected.a };
       break;
     }
-    case 'Decimal': {
-      const a = (getRandomInt(10, 100) / 10).toFixed(1);
-      const b = (getRandomInt(10, 100) / 10).toFixed(1);
-      const op = Math.random() > 0.5 ? '+' : '-';
-      const ans = op === '+' ? parseFloat(a) + parseFloat(b) : parseFloat(a) - parseFloat(b);
-      prob = { question: `${a} ${op} ${b}`, answer: ans.toFixed(1) };
-      break;
-    }
-    case 'PEMDAS': {
-      const a = getRandomInt(2, 10);
-      const b = getRandomInt(2, 10);
-      const c = getRandomInt(2, 5);
-      const useParen = Math.random() > 0.5;
-      if (useParen) {
-        prob = { question: `(${a} + ${b}) × ${c}`, answer: ((a + b) * c).toString() };
-      } else {
-        prob = { question: `${a} + ${b} × ${c}`, answer: (a + b * c).toString() };
-      }
-      break;
-    }
-    case 'Algebra': {
-      const x = getRandomInt(1, 10);
-      const a = getRandomInt(2, 5);
-      const b = getRandomInt(1, 15);
-      const c = a * x + b;
-      prob = { question: `${a}x + ${b} = ${c}`, answer: x.toString() };
+    case 'ScienceLab': {
+      const science = [
+        { q: "Organisms with thick fur survive in the [blank].", a: "cold" },
+        { q: "Deserts have very little [blank].", a: "water" },
+        { q: "Plants get energy from the [blank].", a: "sun" },
+        { q: "A [blank] is an animal that only eats plants.", a: "herbivore" },
+        { q: "The study of Earth is called [blank].", a: "geography" },
+        { q: "Animals that eat both plants and meat are [blank].", a: "omnivore" },
+        { q: "The [blank] is the natural home of an organism.", a: "habitat" }
+      ];
+      const selected = science[getRandomInt(0, science.length - 1)];
+      prob = { question: selected.q, answer: selected.a };
       break;
     }
     default:
@@ -125,6 +143,51 @@ const generateProblem = (type: GameType) => {
 };
 
 // --- Components ---
+
+function DailyQuestLog() {
+  const [quests, setQuests] = useState(() => {
+    const saved = localStorage.getItem(QUEST_LOG_KEY);
+    const today = new Date().toDateString();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.date === today) return parsed.items;
+      } catch (e) {}
+    }
+    return [
+      { id: 'glasses', text: 'I have my glasses on!', done: false },
+      { id: 'seating', text: 'I will move closer if I can\'t see!', done: false },
+      { id: 'joke', text: 'I will share jokes at the RIGHT time!', done: false },
+      { id: 'focus', text: 'I will start my task right away!', done: false },
+    ];
+  });
+
+  const toggleQuest = (id: string) => {
+    const newQuests = quests.map((q: any) => q.id === id ? { ...q, done: !q.done } : q);
+    setQuests(newQuests);
+    localStorage.setItem(QUEST_LOG_KEY, JSON.stringify({ date: new Date().toDateString(), items: newQuests }));
+  };
+
+  return (
+    <div className="max-w-xl mx-auto mb-12 bg-white border-8 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] pixel-font">
+      <h2 className="text-xl mb-6 uppercase text-red-600 flex items-center gap-4">
+        <Heart className="animate-pulse fill-red-600" /> Morning Buffs
+      </h2>
+      <div className="space-y-4 text-left">
+        {quests.map((q: any) => (
+          <div key={q.id} onClick={() => toggleQuest(q.id)} className="flex items-center gap-4 cursor-pointer group">
+            <div className={`w-8 h-8 border-4 border-black flex items-center justify-center shrink-0 ${q.done ? 'bg-green-500' : 'bg-white'}`}>
+               {q.done && <span className="text-white text-xs">✔</span>}
+            </div>
+            <span className={`text-[10px] uppercase leading-tight ${q.done ? 'line-through text-gray-400' : 'text-black'}`}>
+              {q.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface BattleUIProps {
   gameId: GameType;
@@ -140,43 +203,59 @@ interface BattleUIProps {
   totalTimeLimit?: number;
 }
 
-function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 20, timeLeft, isGameOver, onExit, onAnswer, totalTimeLimit = TIME_LIMIT }: BattleUIProps) {
+function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 20, timeLeft, isGameOver, onExit, onAnswer, totalTimeLimit = DEFAULT_TIME_LIMIT }: BattleUIProps) {
   const [inputValue, setInputValue] = useState('');
   const [isJumping, setIsJumping] = useState(false);
+  const [isStarting, setIsStarting] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (feedback === 'idle' && !isGameOver) {
+    if (feedback === 'idle' && !isGameOver && !isStarting) {
       setInputValue('');
       inputRef.current?.focus();
     }
-  }, [feedback, isGameOver, problem.question]);
+  }, [feedback, isGameOver, problem.question, isStarting]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (feedback !== 'idle' || isGameOver || !inputValue.trim()) return;
     setIsJumping(true);
-    onAnswer(inputValue.trim());
-    setTimeout(() => setIsJumping(null as any), 500);
+    onAnswer(inputValue.trim().toLowerCase());
+    setTimeout(() => setIsJumping(false), 500);
   };
+
+  if (isStarting) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sky-bg pixel-font">
+        <div className="w-full max-w-lg bg-white border-8 border-black p-10 shadow-[20px_20px_0px_0px_rgba(0,0,0,0.3)] text-center">
+          <h2 className="text-2xl font-black text-black mb-4 uppercase leading-tight">FOCUS POWER-UP!</h2>
+          <p className="text-gray-500 text-[10px] mb-8 uppercase leading-tight">
+            "Owen, your ideas are ALREADY good enough! Let's start with just one."
+          </p>
+          <button
+            onClick={() => setIsStarting(false)}
+            className="mario-brick bg-green-500 text-white text-xl px-12 py-6 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none animate-bounce uppercase"
+          >
+            START TASK
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col sky-bg pixel-font overflow-hidden">
       {/* HUD */}
       <div className="p-8 flex justify-between items-start text-white text-xl z-20">
-        <div>
+        <div className="text-left">
           <p className="mb-2">OWEN</p>
           <p>{score.toString().padStart(6, '0')}</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="mb-2">COINS</p>
+          <p className="mb-2">PROGRESS</p>
           <p className="flex items-center gap-2">
-            <Coins className="text-yellow-400" /> ×{progress.toString().padStart(3, '0')}
+            <Coins className="text-yellow-400" /> {progress}/{totalProgress}
           </p>
-        </div>
-        <div className="text-center">
-          <p className="mb-2">WORLD</p>
-          <p>1-{Math.floor(progress / 50) + 1}</p>
         </div>
         <div className="text-right">
           <p className="mb-2">TIME</p>
@@ -184,25 +263,12 @@ function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 
         </div>
       </div>
 
-      {/* Decorative Clouds */}
-      <div className="absolute top-20 left-0 w-full h-40 pointer-events-none opacity-50 overflow-hidden">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="absolute cloud-animate" style={{ top: `${i * 40}px`, animationDelay: `${i * 15}s` }}>
-             <div className="w-24 h-12 bg-white rounded-full relative shadow-lg">
-                <div className="absolute -top-4 left-4 w-12 h-12 bg-white rounded-full"></div>
-                <div className="absolute -top-4 right-4 w-12 h-12 bg-white rounded-full"></div>
-             </div>
-          </div>
-        ))}
-      </div>
-
       {/* Main Game Area */}
       <div className="flex-1 relative flex flex-col items-center justify-center pb-32">
-        {/* The Problem */}
         <div className={`mb-12 transform transition-all ${feedback === 'wrong' ? 'shake' : ''}`}>
-           <div className="bg-white border-8 border-black p-8 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] text-center relative">
+           <div className="bg-white border-8 border-black p-8 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] text-center relative max-w-md mx-auto">
               <p className="text-gray-400 text-[10px] mb-4 uppercase tracking-tighter">Question Block</p>
-              <h2 className="text-4xl md:text-6xl text-black leading-tight">{problem.question}</h2>
+              <h2 className="text-xl md:text-2xl text-black leading-tight uppercase">{problem.question}</h2>
               {feedback === 'correct' && (
                 <div className="absolute -top-20 left-1/2 -translate-x-1/2 coin-animate">
                    <Coins size={60} className="text-yellow-400 fill-yellow-400" />
@@ -211,7 +277,6 @@ function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 
            </div>
         </div>
 
-        {/* Answer Input */}
         <form onSubmit={handleSubmit} className="flex flex-col items-center w-full max-w-sm px-4">
            <input
              ref={inputRef}
@@ -221,7 +286,7 @@ function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 
              disabled={feedback !== 'idle' || isGameOver}
              autoFocus
              placeholder="???"
-             className="w-full bg-white border-8 border-black p-6 text-4xl text-center text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] focus:outline-none mb-8 placeholder:opacity-20"
+             className="w-full bg-white border-8 border-black p-6 text-2xl text-center text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] focus:outline-none mb-8 placeholder:opacity-20 uppercase"
            />
            <button
              type="submit"
@@ -232,31 +297,19 @@ function BattleUI({ gameId, problem, feedback, score, progress, totalProgress = 
            </button>
         </form>
 
-        {/* Owen Character */}
-        <div className={`absolute bottom-32 transition-all duration-300 ${isJumping ? 'mario-jump' : ''}`}>
+        {/* Owen Character - Moved to side */}
+        <div className={`absolute bottom-32 left-8 md:left-20 transition-all duration-300 ${isJumping ? 'mario-jump' : ''}`}>
            <div className="w-16 h-20 bg-red-600 border-4 border-black relative rounded-sm flex items-center justify-center">
               <div className="absolute top-0 w-full h-8 bg-red-800"></div>
               <div className="absolute top-4 w-12 h-8 bg-pink-200 rounded-sm"></div>
               <div className="absolute bottom-4 w-full h-8 bg-blue-600"></div>
-              <span className="text-white text-xs z-10">O</span>
+              <span className="text-white text-xs z-10 font-bold">O</span>
            </div>
         </div>
       </div>
 
-      {/* Ground */}
-      <div className="h-32 w-full mario-ground flex items-start justify-center pt-2">
-         <div className="flex gap-4 opacity-50">
-            {[...Array(20)].map((_, i) => <div key={i} className="w-10 h-10 border-4 border-black/20"></div>)}
-         </div>
-      </div>
-
-      {/* Exit Button */}
-      <button 
-        onClick={onExit}
-        className="fixed bottom-4 right-4 p-4 bg-green-500 border-4 border-black text-white hover:bg-green-400 transition-colors z-30"
-      >
-        <RotateCcw size={24} />
-      </button>
+      <div className="h-32 w-full mario-ground shrink-0"></div>
+      <button onClick={onExit} className="fixed bottom-4 right-4 p-4 bg-green-500 border-4 border-black text-white hover:bg-green-400 z-30"><RotateCcw size={24} /></button>
     </div>
   );
 }
@@ -268,18 +321,21 @@ function GameCard({ game, onSelect, isLocked }: { game: GameInfo; onSelect: (id:
       className={`mario-card relative ${isLocked ? 'locked' : 'cursor-pointer group'}`}
     >
       <div className={`relative bg-white border-8 border-black p-6 flex flex-col items-center text-center h-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group-hover:translate-x-1 group-hover:translate-y-1 group-hover:shadow-none transition-all`}>
-        <div className={`p-4 rounded-lg ${isLocked ? 'bg-gray-400' : 'mario-question-block'} border-4 border-black mb-4`}>
+        <div className={`p-4 rounded-lg shrink-0 ${isLocked ? 'bg-gray-400' : 'mario-question-block'} border-4 border-black mb-4`}>
           {isLocked ? <Lock size={40} className="text-black" /> : <game.icon size={40} className="text-black" />}
         </div>
-        <h3 className="text-lg font-black text-black mb-2 uppercase pixel-font tracking-tighter leading-tight">{game.title}</h3>
-        <p className="text-[10px] text-gray-400 uppercase pixel-font">{game.grades}</p>
+        <h3 className="text-[10px] font-black text-black mb-2 uppercase pixel-font leading-tight shrink-0">{game.title}</h3>
+        <p className="text-[8px] text-gray-400 uppercase pixel-font mb-4 shrink-0">{game.grades}</p>
+        <div className="mt-auto border-t-4 border-gray-100 pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+           <p className="text-[7px] text-blue-600 uppercase italic leading-tight">{game.reportContext}</p>
+        </div>
       </div>
     </div>
   );
 }
 
-function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
-  const gameId = 'Multiplication';
+function FactFluencyGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
+  const gameId = 'FactFluency';
   const [difficulty, setDifficulty] = useState<number | null>(null);
   const [questions, setQuestions] = useState<MathQuestion[]>(() => {
     const saved = localStorage.getItem(MULTIPLICATION_STATE_KEY);
@@ -287,9 +343,7 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
-        return generateAllMultiplicationQuestions();
-      }
+      } catch (e) {}
     }
     return generateAllMultiplicationQuestions();
   });
@@ -310,7 +364,7 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
 
   useEffect(() => {
     setProgress(questions.filter(isQuestionSatisfied).length);
-  }, []);
+  }, [questions]);
 
   const startBattle = (seconds: number) => {
     setDifficulty(seconds);
@@ -363,11 +417,11 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isGameOver, feedback, handleTimeOut, currentQuestion, difficulty]);
 
-  const handleAnswer = (selectedOption: string) => {
+  const handleAnswer = (val: string) => {
     if (feedback !== 'idle' || isGameOver || !currentQuestion) return;
     if (timerRef.current) clearInterval(timerRef.current);
     
-    const isCorrect = selectedOption.trim() === currentQuestion.answer;
+    const isCorrect = val.trim() === currentQuestion.answer;
     setFeedback(isCorrect ? 'correct' : 'wrong');
     if (isCorrect) setScore(s => s + 100);
 
@@ -381,7 +435,6 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
         return q;
       });
       localStorage.setItem(MULTIPLICATION_STATE_KEY, JSON.stringify(updated));
-      setProgress(updated.filter(isQuestionSatisfied).length);
       setTimeout(() => moveToNext(updated), 800);
       return updated;
     });
@@ -391,20 +444,16 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sky-bg pixel-font">
         <div className="w-full max-w-md bg-white border-8 border-black p-10 shadow-[20px_20px_0px_0px_rgba(0,0,0,0.3)] text-center">
-          <h2 className="text-2xl font-black text-black mb-4 uppercase leading-tight">WORLD SELECTION</h2>
-          <p className="text-gray-500 text-[10px] mb-8 uppercase leading-none">Choose Owen's speed!</p>
+          <h2 className="text-xl font-black text-black mb-4 uppercase">WORLD SELECTION</h2>
+          <p className="text-gray-500 text-[10px] mb-8 uppercase leading-tight">Practice Fact Fluency (Goal: Satisfactory!)</p>
           <div className="grid grid-cols-1 gap-4">
             {[
-              { label: 'WORLD 1-1 (15s)', time: 15, color: 'bg-green-500' },
-              { label: 'WORLD 1-2 (10s)', time: 10, color: 'bg-yellow-500' },
-              { label: 'WORLD 1-3 (5s)', time: 5, color: 'bg-orange-600' },
-              { label: 'WORLD 1-4 (3s)', time: 3, color: 'bg-red-700' }
+              { label: 'W 1-1 (15s)', time: 15, color: 'bg-green-500' },
+              { label: 'W 1-2 (10s)', time: 10, color: 'bg-yellow-500' },
+              { label: 'W 1-3 (5s)', time: 5, color: 'bg-orange-600' },
+              { label: 'W 1-4 (3s)', time: 3, color: 'bg-red-700' }
             ].map((mode) => (
-              <button
-                key={mode.time}
-                onClick={() => startBattle(mode.time)}
-                className={`${mode.color} text-white text-xs py-6 rounded-sm border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all uppercase leading-none`}
-              >
+              <button key={mode.time} onClick={() => startBattle(mode.time)} className={`${mode.color} text-white text-[10px] py-6 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] uppercase`}>
                 {mode.label}
               </button>
             ))}
@@ -416,30 +465,15 @@ function MultiplicationGame({ onExit, onComplete }: { onExit: () => void; onComp
 
   if (!currentQuestion && !isGameOver) return null;
 
-  return (
-    <BattleUI 
-      gameId={gameId} 
-      problem={currentQuestion || { question: 'LEVEL CLEAR!', options: [] }} 
-      feedback={feedback} 
-      score={score} 
-      progress={progress} 
-      totalProgress={questions.length}
-      timeLeft={timeLeft} 
-      isGameOver={isGameOver} 
-      onExit={onExit} 
-      onAnswer={handleAnswer} 
-      totalTimeLimit={difficulty}
-    />
-  );
+  return <BattleUI gameId={gameId} problem={currentQuestion || { question: 'LEVEL CLEAR!' }} feedback={feedback} score={score} progress={progress} totalProgress={questions.length} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} totalTimeLimit={difficulty} />;
 }
 
-function FractionGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
-  const gameId = 'Fraction';
-  const [problem, setProblem] = useState(() => generateProblem(gameId));
+function ReportAreaGame({ id, onExit, onComplete }: { id: GameType, onExit: () => void; onComplete: () => void }) {
+  const [problem, setProblem] = useState(() => generateProblem(id));
   const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const [score, setScore] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME_LIMIT);
   const [isGameOver, setIsGameOver] = useState(false);
   const timerRef = useRef<any>(null);
 
@@ -447,11 +481,11 @@ function FractionGame({ onExit, onComplete }: { onExit: () => void; onComplete: 
     if (timerRef.current) clearInterval(timerRef.current);
     setFeedback('wrong');
     setTimeout(() => {
-      setProblem(generateProblem(gameId));
-      setTimeLeft(10);
+      setProblem(generateProblem(id));
+      setTimeLeft(DEFAULT_TIME_LIMIT);
       setFeedback('idle');
     }, 800);
-  }, [gameId]);
+  }, [id]);
 
   useEffect(() => {
     if (!isGameOver && feedback === 'idle') {
@@ -468,233 +502,32 @@ function FractionGame({ onExit, onComplete }: { onExit: () => void; onComplete: 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isGameOver, feedback, handleTimeOut]);
 
-  const handleAnswer = (selectedOption: string) => {
+  const handleAnswer = (val: string) => {
     if (feedback !== 'idle' || isGameOver) return;
     if (timerRef.current) clearInterval(timerRef.current);
-    const isCorrect = selectedOption.trim() === problem.answer || (problem.rawAnswer && selectedOption.trim() === problem.rawAnswer);
+    const isCorrect = val.trim().toLowerCase() === problem.answer.toLowerCase();
     if (isCorrect) {
       setFeedback('correct');
       setScore(s => s + 100);
       const newProgress = progress + 1;
       setProgress(newProgress);
-      if (newProgress >= 20) {
+      if (newProgress >= 10) {
         setIsGameOver(true);
         setTimeout(() => onComplete(), 1200);
       } else {
         setTimeout(() => {
-          setProblem(generateProblem(gameId));
-          setTimeLeft(10);
+          setProblem(generateProblem(id));
+          setTimeLeft(DEFAULT_TIME_LIMIT);
           setFeedback('idle');
         }, 800);
       }
     } else {
       setFeedback('wrong');
-      setTimeout(() => {
-        setFeedback('idle');
-        setTimeLeft(10);
-      }, 800);
+      setTimeout(() => { setFeedback('idle'); setTimeLeft(DEFAULT_TIME_LIMIT); }, 800);
     }
   };
 
-  return <BattleUI gameId={gameId} problem={problem} feedback={feedback} score={score} progress={progress} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} />;
-}
-
-function DecimalGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
-  const gameId = 'Decimal';
-  const [problem, setProblem] = useState(() => generateProblem(gameId));
-  const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
-  const [score, setScore] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const timerRef = useRef<any>(null);
-
-  const handleTimeOut = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setFeedback('wrong');
-    setTimeout(() => {
-      setProblem(generateProblem(gameId));
-      setTimeLeft(10);
-      setFeedback('idle');
-    }, 800);
-  }, [gameId]);
-
-  useEffect(() => {
-    if (!isGameOver && feedback === 'idle') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleTimeOut();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isGameOver, feedback, handleTimeOut]);
-
-  const handleAnswer = (selectedOption: string) => {
-    if (feedback !== 'idle' || isGameOver) return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    const isCorrect = selectedOption.trim() === problem.answer;
-    if (isCorrect) {
-      setFeedback('correct');
-      setScore(s => s + 100);
-      const newProgress = progress + 1;
-      setProgress(newProgress);
-      if (newProgress >= 20) {
-        setIsGameOver(true);
-        setTimeout(() => onComplete(), 1200);
-      } else {
-        setTimeout(() => {
-          setProblem(generateProblem(gameId));
-          setTimeLeft(10);
-          setFeedback('idle');
-        }, 800);
-      }
-    } else {
-      setFeedback('wrong');
-      setTimeout(() => {
-        setFeedback('idle');
-        setTimeLeft(10);
-      }, 800);
-    }
-  };
-
-  return <BattleUI gameId={gameId} problem={problem} feedback={feedback} score={score} progress={progress} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} />;
-}
-
-function PEMDASGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
-  const gameId = 'PEMDAS';
-  const [problem, setProblem] = useState(() => generateProblem(gameId));
-  const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
-  const [score, setScore] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const timerRef = useRef<any>(null);
-
-  const handleTimeOut = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setFeedback('wrong');
-    setTimeout(() => {
-      setProblem(generateProblem(gameId));
-      setTimeLeft(10);
-      setFeedback('idle');
-    }, 800);
-  }, [gameId]);
-
-  useEffect(() => {
-    if (!isGameOver && feedback === 'idle') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleTimeOut();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isGameOver, feedback, handleTimeOut]);
-
-  const handleAnswer = (selectedOption: string) => {
-    if (feedback !== 'idle' || isGameOver) return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    const isCorrect = selectedOption.trim() === problem.answer;
-    if (isCorrect) {
-      setFeedback('correct');
-      setScore(s => s + 100);
-      const newProgress = progress + 1;
-      setProgress(newProgress);
-      if (newProgress >= 20) {
-        setIsGameOver(true);
-        setTimeout(() => onComplete(), 1200);
-      } else {
-        setTimeout(() => {
-          setProblem(generateProblem(gameId));
-          setTimeLeft(10);
-          setFeedback('idle');
-        }, 800);
-      }
-    } else {
-      setFeedback('wrong');
-      setTimeout(() => {
-        setFeedback('idle');
-        setTimeLeft(10);
-      }, 800);
-    }
-  };
-
-  return <BattleUI gameId={gameId} problem={problem} feedback={feedback} score={score} progress={progress} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} />;
-}
-
-function AlgebraGame({ onExit, onComplete }: { onExit: () => void; onComplete: () => void }) {
-  const gameId = 'Algebra';
-  const [problem, setProblem] = useState(() => generateProblem(gameId));
-  const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
-  const [score, setScore] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const timerRef = useRef<any>(null);
-
-  const handleTimeOut = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setFeedback('wrong');
-    setTimeout(() => {
-      setProblem(generateProblem(gameId));
-      setTimeLeft(10);
-      setFeedback('idle');
-    }, 800);
-  }, [gameId]);
-
-  useEffect(() => {
-    if (!isGameOver && feedback === 'idle') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleTimeOut();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isGameOver, feedback, handleTimeOut]);
-
-  const handleAnswer = (selectedOption: string) => {
-    if (feedback !== 'idle' || isGameOver) return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    const isCorrect = selectedOption.trim() === problem.answer;
-    if (isCorrect) {
-      setFeedback('correct');
-      setScore(s => s + 100);
-      const newProgress = progress + 1;
-      setProgress(newProgress);
-      if (newProgress >= 20) {
-        setIsGameOver(true);
-        setTimeout(() => onComplete(), 1200);
-      } else {
-        setTimeout(() => {
-          setProblem(generateProblem(gameId));
-          setTimeLeft(10);
-          setFeedback('idle');
-        }, 800);
-      }
-    } else {
-      setFeedback('wrong');
-      setTimeout(() => {
-        setFeedback('idle');
-        setTimeLeft(10);
-      }, 800);
-    }
-  };
-
-  return <BattleUI gameId={gameId} problem={problem} feedback={feedback} score={score} progress={progress} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} />;
+  return <BattleUI gameId={id} problem={problem} feedback={feedback} score={score} progress={progress} totalProgress={10} timeLeft={timeLeft} isGameOver={isGameOver} onExit={onExit} onAnswer={handleAnswer} />;
 }
 
 export default function App() {
@@ -703,9 +536,7 @@ export default function App() {
 
   useEffect(() => {
     const storedLevel = localStorage.getItem(STORAGE_KEY);
-    if (storedLevel) {
-      setUnlockedLevel(parseInt(storedLevel, 10));
-    }
+    if (storedLevel) setUnlockedLevel(parseInt(storedLevel, 10));
   }, []);
 
   const handleComplete = useCallback(() => {
@@ -720,91 +551,76 @@ export default function App() {
 
   return (
     <div className="min-h-screen sky-bg pixel-font pb-20 selection:bg-red-600 selection:text-white relative">
-      {/* Moving Background Clouds for Home Screen */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="absolute cloud-animate" style={{ top: `${i * 10}%`, animationDelay: `${i * 10}s`, opacity: 0.3 }}>
-             <div className="w-32 h-16 bg-white rounded-full"></div>
-          </div>
-        ))}
-      </div>
-
-      {/* Branding Banner */}
       <div className="bg-black border-b-4 border-white py-2 overflow-hidden whitespace-nowrap relative z-10">
         <div className="animate-marquee inline-block">
           {[...Array(10)].map((_, i) => (
-            <span key={i} className="text-white text-xs uppercase mx-8 tracking-tighter">
-              ★ SUPER OWEN BROS ★ SELECT START ★ OWEN ONLY ★
+            <span key={i} className="text-white text-[8px] uppercase mx-8 tracking-tighter">
+              ★ TRIMESTER 3 QUEST ★ SUPER OWEN HUB ★ WITTY & CURIOUS ★
             </span>
           ))}
         </div>
       </div>
 
-      <header className="pt-20 pb-20 px-6 text-center relative z-10">
+      <header className="pt-20 pb-12 px-6 text-center relative z-10">
         <div className="relative inline-block">
           <div className="absolute -inset-4 bg-black border-4 border-white translate-x-2 translate-y-2"></div>
           <div className="relative bg-[#e76d42] border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <h1 className="text-4xl md:text-6xl text-white leading-tight uppercase tracking-tighter">
-              SUPER <br /> OWEN HUB
+            <h1 className="text-2xl md:text-4xl text-white leading-tight uppercase tracking-tighter">
+              SUPER <br /> OWEN QUEST
             </h1>
           </div>
-        </div>
-        <div className="mt-8">
-           <span className="bg-white text-black px-6 py-2 border-4 border-black text-xs uppercase animate-pulse">Press Any Card!</span>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 relative z-10">
+        <DailyQuestLog />
         <div className="grid-5-cols">
           {GAMES.map((game, index) => (
-            <GameCard 
-              key={game.id} 
-              game={game} 
-              onSelect={setActiveGame} 
-              isLocked={index > unlockedLevel}
-            />
+            <GameCard key={game.id} game={game} onSelect={setActiveGame} isLocked={index > unlockedLevel} />
           ))}
         </div>
       </main>
 
-      {activeGame === 'Multiplication' && (
-        <MultiplicationGame 
-          onExit={() => setActiveGame(null)} 
-          onComplete={handleComplete}
-        />
+      {activeGame === 'FactFluency' && <FactFluencyGame onExit={() => setActiveGame(null)} onComplete={handleComplete} />}
+      {(activeGame === 'ContextClues' || activeGame === 'ScienceLab') && <ReportAreaGame id={activeGame} onExit={() => setActiveGame(null)} onComplete={handleComplete} />}
+      {activeGame === 'LexiaLink' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md sky-bg pixel-font">
+          <div className="bg-white border-8 border-black p-10 max-w-md text-center">
+             <h2 className="text-xl mb-4">LEXia POWER-UP</h2>
+             <p className="text-[10px] uppercase mb-8 leading-tight text-gray-500">Teacher: "Dedicate 15-20 mins a few times a week to Lexia to accelerate reading fluency."</p>
+             <button onClick={() => window.open('https://www.lexiacore5.com/', '_blank')} className="mario-brick bg-purple-600 text-white text-xs px-8 py-4 mb-4 block w-full border-4 border-black">OPEN LEXIA</button>
+             <button onClick={() => setActiveGame(null)} className="text-[8px] uppercase text-gray-400">Back to Hub</button>
+          </div>
+        </div>
       )}
-      {activeGame === 'Fraction' && (
-        <FractionGame 
-          onExit={() => setActiveGame(null)} 
-          onComplete={handleComplete}
-        />
-      )}
-      {activeGame === 'Decimal' && (
-        <DecimalGame 
-          onExit={() => setActiveGame(null)} 
-          onComplete={handleComplete}
-        />
-      )}
-      {activeGame === 'PEMDAS' && (
-        <PEMDASGame 
-          onExit={() => setActiveGame(null)} 
-          onComplete={handleComplete}
-        />
-      )}
-      {activeGame === 'Algebra' && (
-        <AlgebraGame 
-          onExit={() => setActiveGame(null)} 
-          onComplete={handleComplete}
-        />
+      {activeGame === 'DailyQuest' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md sky-bg pixel-font">
+          <div className="bg-white border-8 border-black p-10 max-w-md text-center">
+             <h2 className="text-xl mb-4 text-red-600">DAILY QUESTS</h2>
+             <p className="text-[10px] uppercase mb-8 leading-tight text-gray-500">"Active strategies to regulate energy and emotions."</p>
+             <DailyQuestLog />
+             <button onClick={() => setActiveGame(null)} className="mario-brick bg-green-500 text-white text-xs px-8 py-4 border-4 border-black block w-full uppercase">QUESTS COMPLETE</button>
+          </div>
+        </div>
       )}
 
-      {/* Footer Decoration */}
       <footer className="mt-32 border-t-8 border-black mario-ground py-20 px-6 relative">
-         <div className="max-w-4xl mx-auto text-center relative z-10">
+         <div className="max-w-4xl mx-auto text-center relative z-10 text-white">
             <div className="w-24 h-40 mario-pipe mx-auto mb-8"></div>
-            <p className="text-white text-xl uppercase mb-4 tracking-tighter">THANK YOU OWEN!</p>
-            <p className="text-white text-xs uppercase tracking-tighter">BUT THE ANSWERS ARE IN ANOTHER CASTLE!</p>
-            <p className="text-white/50 text-[10px] mt-8 uppercase tracking-widest italic">{VERSION}</p>
+            <p className="text-lg uppercase mb-4 text-white">Mastery in Sight!</p>
+            <p className="text-[8px] uppercase mb-8 text-white/80">"Active strategies to regulate energy and emotions." - Trimester 2 Report</p>
+            <p className="text-white/50 text-[10px] uppercase tracking-widest italic">{VERSION}</p>
+            <button 
+              onClick={() => {
+                if (confirm("Reset all your progress? Owen, are you sure?")) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}
+              className="mt-8 bg-black border-4 border-white text-white text-[8px] px-4 py-2 hover:bg-red-600 transition-colors uppercase"
+            >
+              Reset All Progress
+            </button>
          </div>
       </footer>
     </div>
